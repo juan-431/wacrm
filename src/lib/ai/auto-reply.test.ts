@@ -313,10 +313,16 @@ describe('dispatchInboundToAiReply — typing indicator (#527)', () => {
 })
 
 describe('dispatchInboundToAiReply — handoff', () => {
-  it('disables auto-reply, writes a summary, and does not send on handoff', async () => {
+  it('disables auto-reply, writes a summary, and tells the customer on handoff', async () => {
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
-    expect(h.engineSendText).not.toHaveBeenCalled()
+    // Aviso por defecto cuando el modelo solo emitió el marcador.
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0]).toMatchObject({
+      text: 'Te paso con un asesor, te escribe pronto 🙌',
+      aiGenerated: true,
+    })
+    // El aviso no consume un cupo de respuestas de IA.
     expect(h.state.rpcCalls).toHaveLength(0)
     expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
     expect(h.state.updatePayload?.ai_handoff_summary).toContain(
@@ -324,6 +330,19 @@ describe('dispatchInboundToAiReply — handoff', () => {
     )
     // No handoff target configured → conversation left unassigned.
     expect(h.state.updatePayload).not.toHaveProperty('assigned_agent_id')
+  })
+
+  it("sends the model's own text when it wrote one next to the marker", async () => {
+    h.generateReply.mockResolvedValue({ text: 'Te paso con un asesor.', handoff: true })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText.mock.calls[0][0]).toMatchObject({ text: 'Te paso con un asesor.' })
+  })
+
+  it('still hands off when the handoff notice fails to send', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    h.engineSendText.mockRejectedValueOnce(new Error('meta down'))
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
   })
 
   it('routes to the configured handoff agent on handoff', async () => {

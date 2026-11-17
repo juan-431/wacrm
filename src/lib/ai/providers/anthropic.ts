@@ -17,6 +17,7 @@ const ANTHROPIC_VERSION = '2023-06-01'
 interface AnthropicResponse {
   content?: { type?: string; text?: string }[]
   usage?: { input_tokens?: number; output_tokens?: number }
+  stop_reason?: string
 }
 
 /**
@@ -59,6 +60,8 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
         system: systemPrompt,
         max_tokens: MAX_OUTPUT_TOKENS,
         messages: normalizeForAnthropic(messages),
+        // Haiku 5.5 piensa por defecto (esfuerzo medio) y eso consume max_tokens.
+        ...(model.startsWith('claude-haiku-5') ? { output_config: { effort: 'low' } } : {}),
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
@@ -71,6 +74,12 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
   }
 
   const data = (await res.json().catch(() => null)) as AnthropicResponse | null
+  // Nunca enviar una respuesta cortada por el tope de tokens.
+  if (data?.stop_reason === 'max_tokens') {
+    throw new AiError(t('ai.emptyResponse', { provider: 'Anthropic' }), {
+      code: 'empty_response',
+    })
+  }
   const text = data?.content
     ?.filter((b) => b.type === 'text' && typeof b.text === 'string')
     .map((b) => b.text)

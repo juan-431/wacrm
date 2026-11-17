@@ -181,6 +181,15 @@ export async function dispatchInboundToAiReply(
           .eq('id', conversationId)
           .is('assigned_agent_id', null)
       }
+      // Avisar al cliente para que no quede en silencio.
+      await engineSendText({
+        accountId,
+        userId: configOwnerUserId,
+        conversationId,
+        contactId,
+        text: text || 'Te paso con un asesor, te escribe pronto 🙌',
+        aiGenerated: true,
+      }).catch((err) => console.error('[ai auto-reply] aviso de traspaso falló:', err))
       return
     }
 
