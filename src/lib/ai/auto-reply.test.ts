@@ -86,7 +86,11 @@ vi.mock('./admin-client', () => ({
   }),
 }))
 
-import { dispatchInboundToAiReply } from './auto-reply'
+import {
+  AUDIO_NOTICE_TEXT,
+  dispatchInboundAudioNotice,
+  dispatchInboundToAiReply,
+} from './auto-reply'
 
 const ARGS = {
   accountId: 'acct-1',
@@ -365,5 +369,41 @@ describe('dispatchInboundToAiReply — handoff', () => {
     expect(pause?.isNull).toEqual([])
     expect(assign?.payload).toEqual({ assigned_agent_id: 'agent-7' })
     expect(assign?.isNull).toEqual(['assigned_agent_id'])
+  })
+})
+
+describe('dispatchInboundAudioNotice', () => {
+  it('envía el aviso fijo, hace traspaso y no llama a la IA', async () => {
+    await dispatchInboundAudioNotice(ARGS)
+    expect(h.generateReply).not.toHaveBeenCalled()
+    expect(h.engineSendText).toHaveBeenCalledTimes(1)
+    expect(h.engineSendText.mock.calls[0][0]).toMatchObject({ text: AUDIO_NOTICE_TEXT })
+    expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
+    expect(h.state.rpcCalls).toHaveLength(0)
+  })
+
+  it('no repite el aviso si la conversación ya fue traspasada (segundo audio)', async () => {
+    h.state.conv = { assigned_agent_id: null, ai_autoreply_disabled: true, ai_reply_count: 0 }
+    await dispatchInboundAudioNotice(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('no responde si un asesor ya tiene la conversación', async () => {
+    h.state.conv = { assigned_agent_id: 'agent-1', ai_autoreply_disabled: false, ai_reply_count: 0 }
+    await dispatchInboundAudioNotice(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('asigna al asesor configurado en "Derivar a"', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
+    await dispatchInboundAudioNotice(ARGS)
+    expect(h.state.updatePayload).toMatchObject({ assigned_agent_id: 'agent-7' })
+  })
+
+  it('no hace nada si la respuesta automática está apagada', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ autoReplyEnabled: false }))
+    await dispatchInboundAudioNotice(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+    expect(h.state.updatePayload).toBeNull()
   })
 })

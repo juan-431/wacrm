@@ -21,7 +21,10 @@ import {
 import { readCappedBody } from '@/lib/whatsapp/webhook-body'
 import { resumeAwaitingReply, runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
-import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
+import {
+  dispatchInboundAudioNotice,
+  dispatchInboundToAiReply,
+} from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import {
   applyBroadcastRecipientStatus,
@@ -913,6 +916,14 @@ async function processMessage(
       // Lets the bot show "typing…" (and mark the message read) while
       // the reply is generated.
       inboundMessageId: message.id,
+    })
+  } else if (!contentConsumed && contentType === 'audio') {
+    // Audios: sin transcripción todavía. Aviso fijo + traspaso, sin IA.
+    await dispatchInboundAudioNotice({
+      accountId,
+      conversationId: conversation.id,
+      contactId: contactRecord.id,
+      configOwnerUserId,
     })
   }
 

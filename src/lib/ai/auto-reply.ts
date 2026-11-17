@@ -235,6 +235,72 @@ export async function dispatchInboundToAiReply(
   }
 }
 
+/** Texto fijo para audios: la IA no puede escucharlos. */
+export const AUDIO_NOTICE_TEXT =
+  'No puedo escuchar audios por este chat. ¿Me escribes tu pregunta?'
+
+/**
+ * Audio entrante (sin transcripción): responde un texto fijo y pasa la
+ * conversación al asesor, sin llamar a la IA ni gastar tokens. "Una sola
+ * vez" sale del propio traspaso: con `ai_autoreply_disabled` en true, los
+ * siguientes audios (y textos) ya no pasan por aquí ni por la IA.
+ * Nunca lanza: igual que dispatchInboundToAiReply.
+ */
+export async function dispatchInboundAudioNotice(args: DispatchArgs): Promise<void> {
+  const { accountId, conversationId, contactId, configOwnerUserId } = args
+  try {
+    const db = supabaseAdmin()
+    const config = await loadAiConfig(db, accountId)
+    if (!config || !config.autoReplyEnabled) return
+
+    // Mismo criterio que el texto: si hay auto-respondedores activos, no hablar.
+    const { data: autoResponders } = await db
+      .from('automations')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('is_active', true)
+      .in('trigger_type', ['new_message_received', 'keyword_match'])
+      .limit(1)
+    if (autoResponders && autoResponders.length > 0) return
+
+    const { data: conv, error: convErr } = await db
+      .from('conversations')
+      .select('assigned_agent_id, ai_autoreply_disabled')
+      .eq('id', conversationId)
+      .maybeSingle()
+    if (convErr || !conv) return
+    if (conv.assigned_agent_id || conv.ai_autoreply_disabled) return
+
+    // Primero el traspaso (así un segundo audio simultáneo ya no responde).
+    await db
+      .from('conversations')
+      .update({
+        ai_autoreply_disabled: true,
+        ai_handoff_summary:
+          'El cliente envió un audio y la IA no puede escucharlo. Escúchalo y responde.',
+      })
+      .eq('id', conversationId)
+    if (config.handoffAgentId) {
+      await db
+        .from('conversations')
+        .update({ assigned_agent_id: config.handoffAgentId })
+        .eq('id', conversationId)
+        .is('assigned_agent_id', null)
+    }
+
+    await engineSendText({
+      accountId,
+      userId: configOwnerUserId,
+      conversationId,
+      contactId,
+      text: AUDIO_NOTICE_TEXT,
+      aiGenerated: true,
+    }).catch((err) => console.error('[ai audio notice] envío falló:', err))
+  } catch (err) {
+    console.error('[ai audio notice] dispatch failed:', err)
+  }
+}
+
 async function hasNewerInbound(
   db: ReturnType<typeof supabaseAdmin>,
   conversationId: string,
