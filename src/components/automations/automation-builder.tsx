@@ -1337,6 +1337,7 @@ function ConditionEditor({
           <option value="contact_field">{t("config.subjects.contact_field")}</option>
           <option value="message_content">{t("config.subjects.message_content")}</option>
           <option value="time_of_day">{t("config.subjects.time_of_day")}</option>
+          <option value="customer_inactive">{t("config.subjects.customer_inactive")}</option>
         </select>
       </FieldBlock>
       {subject !== "message_content" && (
@@ -1349,6 +1350,8 @@ function ConditionEditor({
                 ? t("config.placeholderContact")
                 : subject === "tag_presence"
                 ? t("config.placeholderTag")
+                : subject === "customer_inactive"
+                ? t("config.placeholderMinutes")
                 : ""
             }
             value={(cfg.operand as string) ?? ""}

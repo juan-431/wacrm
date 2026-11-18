@@ -135,6 +135,13 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
       ) {
         issues.push({ path: `${path}.value`, message: t('conditionValueRequired') })
       }
+      if (
+        c.subject === 'customer_inactive' &&
+        nonEmpty(c.operand) &&
+        !(Number.isInteger(Number(c.operand)) && Number(c.operand) > 0)
+      ) {
+        issues.push({ path: `${path}.operand`, message: t('conditionMinutesInvalid') })
+      }
       if (c.subject === 'time_of_day' && c.timezone !== undefined && !isValidTimeZone(c.timezone)) {
         issues.push({ path: `${path}.timezone`, message: t('conditionTimezoneInvalid') })
       }

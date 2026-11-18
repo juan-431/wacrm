@@ -232,6 +232,19 @@ describe("validateStepsForActivation", () => {
   });
 });
 
+describe("validateStepsForActivation — customer_inactive", () => {
+  const cond = (operand: string) => [
+    { step_type: "condition", step_config: { subject: "customer_inactive", operand } },
+  ];
+  it("acepta minutos enteros positivos", () => {
+    expect(validateStepsForActivation(cond("45"))).toEqual([]);
+  });
+  it("rechaza minutos no numéricos o cero", () => {
+    expect(validateStepsForActivation(cond("cero")).length).toBe(1);
+    expect(validateStepsForActivation(cond("0")).length).toBe(1);
+  });
+});
+
 describe("validateTriggerForActivation", () => {
   it("accepts a valid keyword_match config", () => {
     expect(

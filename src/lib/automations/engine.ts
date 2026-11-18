@@ -1159,6 +1159,31 @@ async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): P
     }
     case 'time_of_day':
       return isWithinTimeWindow(cfg.operand, new Date(), cfg.timezone)
+    case 'customer_inactive': {
+      // Seguimientos: solo si el cliente dejó de escribir y la
+      // conversación no está con un asesor. Ante cualquier duda, false
+      // (mejor no enviar que interrumpir).
+      const minutes = Number(cfg.operand)
+      const conversationId = args.context.conversation_id
+      if (!Number.isFinite(minutes) || minutes <= 0 || typeof conversationId !== 'string') return false
+      const { data: conv } = await db
+        .from('conversations')
+        .select('assigned_agent_id, ai_autoreply_disabled')
+        .eq('id', conversationId)
+        .eq('account_id', args.automation.account_id)
+        .maybeSingle()
+      if (!conv || conv.assigned_agent_id || conv.ai_autoreply_disabled) return false
+      const { data: last } = await db
+        .from('messages')
+        .select('created_at')
+        .eq('conversation_id', conversationId)
+        .eq('sender_type', 'customer')
+        .order('created_at', { ascending: false })
+        .limit(1)
+      const lastAt = last?.[0]?.created_at ? Date.parse(last[0].created_at) : NaN
+      if (Number.isNaN(lastAt)) return false
+      return Date.now() - lastAt >= minutes * 60_000
+    }
     default:
       return false
   }

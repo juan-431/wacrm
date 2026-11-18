@@ -608,7 +608,10 @@ export type ConditionSubject =
   | 'contact_field'
   | 'tag_presence'
   | 'message_content'
-  | 'time_of_day';
+  | 'time_of_day'
+  /** Pasa si el cliente no ha escrito en `operand` minutos y ningún
+   *  asesor tiene la conversación (asignada o con la IA en pausa). */
+  | 'customer_inactive';
 
 export interface ConditionStepConfig {
   subject: ConditionSubject;

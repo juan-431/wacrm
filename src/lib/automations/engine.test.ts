@@ -8,6 +8,10 @@ const h = vi.hoisted(() => ({
     ownedCustomField: null as { id: string } | null,
     /** Row the account-scoped `conversations` lookup resolves. */
     ownedConversation: null as { id: string } | null,
+    /** Fila de `conversations` para la condición customer_inactive. */
+    inactivityConversation: null as Record<string, unknown> | null,
+    /** Último mensaje del cliente (messages) para customer_inactive. */
+    lastCustomerMessages: [] as { created_at: string }[],
     automations: [] as Record<string, unknown>[],
     steps: [] as Record<string, unknown>[],
     fromCalls: [] as string[],
@@ -82,7 +86,11 @@ vi.mock("./admin-client", () => {
       return { data: state.owned, error: null };
     }
     if (table === "conversations") {
+      if (state.inactivityConversation) return { data: state.inactivityConversation, error: null };
       return { data: state.ownedConversation, error: null };
+    }
+    if (table === "messages") {
+      return { data: state.lastCustomerMessages, error: null };
     }
     if (table === "custom_fields") {
       // account-scoped ownership lookup for a custom field definition
@@ -188,6 +196,8 @@ beforeEach(() => {
   h.state.owned = null;
   h.state.ownedCustomField = null;
   h.state.ownedConversation = null;
+  h.state.inactivityConversation = null;
+  h.state.lastCustomerMessages = [];
   h.state.automations = [];
   h.state.steps = [];
   h.state.fromCalls = [];
@@ -1221,6 +1231,59 @@ describe("wait_for_reply", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    describe("customer_inactive", () => {
+      const inactive = (minutes: string) => [
+        step("cond", "condition", 0, { subject: "customer_inactive", operand: minutes }),
+        step("yes1", "send_message", 0, say("seguimiento"), { id: "cond", branch: "yes" }),
+        step("no1", "send_message", 0, say("nada"), { id: "cond", branch: "no" }),
+      ];
+      const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+      const freeConv = { id: "conv1", assigned_agent_id: null, ai_autoreply_disabled: false };
+
+      it("pasa si el cliente no escribe hace más de los minutos indicados", async () => {
+        h.state.inactivityConversation = freeConv;
+        h.state.lastCustomerMessages = [{ created_at: minutesAgo(50) }];
+        h.state.steps = inactive("45");
+        await trigger("hola");
+        expect(sentTexts()).toEqual(["seguimiento"]);
+      });
+
+      it("no pasa si el cliente escribió hace poco", async () => {
+        h.state.inactivityConversation = freeConv;
+        h.state.lastCustomerMessages = [{ created_at: minutesAgo(10) }];
+        h.state.steps = inactive("45");
+        await trigger("hola");
+        expect(sentTexts()).toEqual(["nada"]);
+      });
+
+      it("no pasa si un asesor tiene la conversación", async () => {
+        h.state.inactivityConversation = { id: "conv1", assigned_agent_id: "agent-1", ai_autoreply_disabled: true };
+        h.state.lastCustomerMessages = [{ created_at: minutesAgo(600) }];
+        h.state.steps = inactive("45");
+        await trigger("hola");
+        expect(sentTexts()).toEqual(["nada"]);
+      });
+
+      it("no pasa si la IA está en pausa aunque nadie tenga la conversación", async () => {
+        h.state.inactivityConversation = { id: "conv1", assigned_agent_id: null, ai_autoreply_disabled: true };
+        h.state.lastCustomerMessages = [{ created_at: minutesAgo(600) }];
+        h.state.steps = inactive("45");
+        await trigger("hola");
+        expect(sentTexts()).toEqual(["nada"]);
+      });
+
+      it("no pasa con minutos inválidos o sin mensajes del cliente", async () => {
+        h.state.inactivityConversation = freeConv;
+        h.state.lastCustomerMessages = [];
+        h.state.steps = inactive("45");
+        await trigger("hola");
+        h.state.lastCustomerMessages = [{ created_at: minutesAgo(600) }];
+        h.state.steps = inactive("cero");
+        await trigger("hola");
+        expect(sentTexts()).toEqual(["nada", "nada"]);
+      });
     });
   });
 });
