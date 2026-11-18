@@ -159,6 +159,24 @@ html[data-mode="light"] {
 
 /* ---- ACCENT: primary color ---- */
 
+/* Politécnico Central Colombiano: azul institucional (entre el azul
+   oscuro y el cian del logo), cian del logo para gráficas y naranja
+   de la llama para la tercera serie. */
+html[data-theme="poli"] {
+  --primary: oklch(0.5 0.15 252);
+  --primary-foreground: oklch(0.985 0 0);
+  --primary-hover: oklch(0.56 0.15 248);
+  --primary-soft: oklch(0.5 0.15 252 / 0.12);
+  --primary-soft-2: oklch(0.5 0.15 252 / 0.22);
+  --ring: oklch(0.5 0.15 252);
+  --chart-1: oklch(0.5 0.15 252);
+  --chart-2: oklch(0.76 0.15 228);
+  --chart-3: oklch(0.76 0.17 60);
+  --sidebar-primary: oklch(0.5 0.15 252);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-ring: oklch(0.5 0.15 252);
+}
+
 :root,
 html[data-theme="violet"] {
   --primary: oklch(0.526 0.247 293);
