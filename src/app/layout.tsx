@@ -29,6 +29,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const metadata: Metadata = {
+  // URL absoluta para la imagen de vista previa (opengraph-image.png);
+  // sin esto Next.js la arma con localhost y WhatsApp no la carga.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: {
     default: "Poli · Politécnico Central",
     template: "%s — Poli",
