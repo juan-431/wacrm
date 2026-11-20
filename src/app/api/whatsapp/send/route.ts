@@ -13,6 +13,7 @@ import {
 } from '@/lib/whatsapp/send-message'
 import { isUniqueViolation } from '@/lib/contacts/dedupe'
 import { getT } from '@/lib/i18n/translate'
+import { canActOnConversation } from '@/lib/inbox/ownership'
 
 const t = getT('Api')
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     // still delivered a real WhatsApp message to the customer and merely
     // failed to record it (surfacing as "sent to Meta but failed to save
     // to DB"). RLS can't un-send that, so the role check belongs here.
-    const { supabase, accountId, userId } = await requireRole('agent')
+    const { supabase, accountId, userId, role } = await requireRole('agent')
 
     // Per-user rate limit. Bucket key is scoped to this route so
     // `/broadcast` has an independent budget.
@@ -149,6 +150,21 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: t('common.conversationNotFound') },
         { status: 404 }
+      )
+    }
+
+    // Varios asesores: un chat asignado a otro asesor solo lo atiende
+    // ese asesor (o un administrador).
+    const { data: owner } = await supabase
+      .from('conversations')
+      .select('assigned_agent_id')
+      .eq('id', conversationId)
+      .eq('account_id', accountId)
+      .maybeSingle()
+    if (!canActOnConversation(owner?.assigned_agent_id ?? null, userId, role)) {
+      return NextResponse.json(
+        { error: t('common.assignedToOtherAgent') },
+        { status: 403 }
       )
     }
 

@@ -348,7 +348,8 @@
       "clearAll": "Clear all",
       "noConversations": "No conversations found",
       "noMessagesYet": "No messages yet",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "filterMine": "My chats"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -386,7 +387,8 @@
       "assigneeNoLongerMember": "That teammate is no longer a member of this account",
       "networkError": "network error",
       "documentFallback": "Document",
-      "you": "You"
+      "you": "You",
+      "anotherAgent": "another agent"
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -437,7 +439,8 @@
         "document": "document",
         "audio": "audio"
       },
-      "uploadFailed": "Upload failed."
+      "uploadFailed": "Upload failed.",
+      "lockedByOther": "{name} is handling this chat. Ask an admin to reassign it to you."
     },
     "bubble": {
       "photo": "Photo",
@@ -2756,7 +2759,8 @@
       "unknownError": "Unknown error",
       "invalidRequestBody": "Invalid request body",
       "titleEmpty": "title cannot be empty",
-      "insertFailed": "insert failed"
+      "insertFailed": "insert failed",
+      "assignedToOtherAgent": "Another agent is handling this chat. Ask an admin to reassign it to you."
     },
     "account": {
       "apiKeys": {

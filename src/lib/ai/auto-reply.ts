@@ -12,6 +12,7 @@ import {
   loadAccountMetaCredentials,
 } from '@/lib/flows/meta-send'
 import { sendTypingIndicator } from '@/lib/whatsapp/meta-api'
+import { pickHandoffAgent } from '@/lib/inbox/pick-agent'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 interface DispatchArgs {
@@ -174,10 +175,13 @@ export async function dispatchInboundToAiReply(
         .eq('id', conversationId)
       // Only set the assignee when a target is configured AND the thread
       // isn't already owned — never stomp an existing human assignment.
-      if (config.handoffAgentId) {
+      // Varios asesores: reparto al que tenga menos chats abiertos; sin
+      // asesores, el "Derivar a" configurado.
+      const handoffTarget = await pickHandoffAgent(db, accountId, config.handoffAgentId)
+      if (handoffTarget) {
         await db
           .from('conversations')
-          .update({ assigned_agent_id: config.handoffAgentId })
+          .update({ assigned_agent_id: handoffTarget })
           .eq('id', conversationId)
           .is('assigned_agent_id', null)
       }
@@ -280,10 +284,11 @@ export async function dispatchInboundAudioNotice(args: DispatchArgs): Promise<vo
           'El cliente envió un audio y la IA no puede escucharlo. Escúchalo y responde.',
       })
       .eq('id', conversationId)
-    if (config.handoffAgentId) {
+    const handoffTarget = await pickHandoffAgent(db, accountId, config.handoffAgentId)
+    if (handoffTarget) {
       await db
         .from('conversations')
-        .update({ assigned_agent_id: config.handoffAgentId })
+        .update({ assigned_agent_id: handoffTarget })
         .eq('id', conversationId)
         .is('assigned_agent_id', null)
     }

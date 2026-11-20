@@ -81,6 +81,12 @@ describe("applyInboxFilter", () => {
     expect(applyInboxFilter(list, "unassigned", NOW).map((c) => c.id)).toEqual(["recent", "answered"]);
   });
 
+  it("'Mis chats' muestra solo los chats no cerrados del usuario", () => {
+    const withClosed = [...list, conv("closed", { status: "closed", assigned_agent_id: "agent-1" })];
+    expect(applyInboxFilter(withClosed, "mine", NOW, "agent-1").map((c) => c.id)).toEqual(["old", "pending", "unread"]);
+    expect(applyInboxFilter(list, "mine", NOW, null)).toEqual([]);
+  });
+
   it("keeps the existing unread and status filters", () => {
     expect(applyInboxFilter(list, "unread", NOW).map((c) => c.id)).toEqual(["unread"]);
     expect(applyInboxFilter(list, "pending", NOW).map((c) => c.id)).toEqual(["pending"]);

@@ -348,7 +348,8 @@
       "clearAll": "모두 지우기",
       "noConversations": "대화를 찾을 수 없습니다",
       "noMessagesYet": "아직 메시지가 없습니다",
-      "unknown": "알 수 없음"
+      "unknown": "알 수 없음",
+      "filterMine": "내 대화"
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
@@ -386,7 +387,8 @@
       "assigneeNoLongerMember": "해당 팀원은 더 이상 이 계정의 멤버가 아닙니다",
       "networkError": "네트워크 오류",
       "documentFallback": "문서",
-      "you": "나"
+      "you": "나",
+      "anotherAgent": "다른 상담원"
     },
     "sessionTimer": {
       "expired": "만료됨",
@@ -437,7 +439,8 @@
         "document": "문서",
         "audio": "오디오"
       },
-      "uploadFailed": "업로드에 실패했습니다."
+      "uploadFailed": "업로드에 실패했습니다.",
+      "lockedByOther": "{name}님이 이 대화를 담당하고 있습니다. 관리자에게 재배정을 요청하세요."
     },
     "bubble": {
       "photo": "사진",
@@ -2756,7 +2759,8 @@
       "unknownError": "알 수 없는 오류",
       "invalidRequestBody": "잘못된 요청 본문입니다",
       "titleEmpty": "제목은 비워둘 수 없습니다",
-      "insertFailed": "추가하지 못했습니다"
+      "insertFailed": "추가하지 못했습니다",
+      "assignedToOtherAgent": "다른 상담원이 이 대화를 담당하고 있습니다. 관리자에게 재배정을 요청하세요."
     },
     "account": {
       "apiKeys": {

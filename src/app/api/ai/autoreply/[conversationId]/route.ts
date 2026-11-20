@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
+import { canActOnConversation } from '@/lib/inbox/ownership'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
 
@@ -29,7 +30,7 @@ type Params = { params: Promise<{ conversationId: string }> }
  */
 export async function POST(request: Request, { params }: Params) {
   try {
-    const { supabase, accountId, userId } = await requireRole('agent')
+    const { supabase, accountId, userId, role } = await requireRole('agent')
 
     // Reuse the send bucket: this is a cheap per-user inbox action and
     // toggling it in a tight loop has no legitimate use.
@@ -50,7 +51,7 @@ export async function POST(request: Request, { params }: Params) {
     // Confirm the conversation is in the caller's account before writing.
     const { data: conv, error: convErr } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, assigned_agent_id')
       .eq('id', conversationId)
       .eq('account_id', accountId)
       .maybeSingle()
@@ -63,6 +64,11 @@ export async function POST(request: Request, { params }: Params) {
     }
     if (!conv) {
       return NextResponse.json({ error: t('common.conversationNotFound') }, { status: 404 })
+    }
+    // Un chat de otro asesor no se toma ni se devuelve a la IA (salvo
+    // un administrador).
+    if (!canActOnConversation(conv.assigned_agent_id ?? null, userId, role)) {
+      return NextResponse.json({ error: t('common.assignedToOtherAgent') }, { status: 403 })
     }
 
     const update: Record<string, unknown> = { ai_autoreply_disabled: paused }

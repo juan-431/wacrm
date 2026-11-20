@@ -348,7 +348,8 @@
       "clearAll": "Limpiar todo",
       "noConversations": "No se encontraron conversaciones",
       "noMessagesYet": "Aún no hay mensajes",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "filterMine": "Mis chats"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
@@ -386,7 +387,8 @@
       "assigneeNoLongerMember": "Ese compañero ya no es miembro de esta cuenta",
       "networkError": "error de red",
       "documentFallback": "Documento",
-      "you": "Tú"
+      "you": "Tú",
+      "anotherAgent": "otro asesor"
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -437,7 +439,8 @@
         "document": "documento",
         "audio": "audio"
       },
-      "uploadFailed": "Falló la carga."
+      "uploadFailed": "Falló la carga.",
+      "lockedByOther": "Este chat lo atiende {name}. Pide a un administrador que te lo reasigne."
     },
     "bubble": {
       "photo": "Foto",
@@ -2756,7 +2759,8 @@
       "unknownError": "Error desconocido",
       "invalidRequestBody": "Cuerpo de la solicitud no válido",
       "titleEmpty": "El título no puede estar vacío",
-      "insertFailed": "error al insertar"
+      "insertFailed": "error al insertar",
+      "assignedToOtherAgent": "Este chat lo atiende otro asesor. Pide a un administrador que te lo reasigne."
     },
     "account": {
       "apiKeys": {

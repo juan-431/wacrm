@@ -26,6 +26,7 @@ import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
 import { getT } from '@/lib/i18n/translate'
 import { isWithinTimeWindow } from './time-of-day'
+import { pickHandoffAgent } from '@/lib/inbox/pick-agent'
 
 /** Step errors land in automation_logs and are shown on the logs page. */
 const tErr = getT('LibErrors.engine')
@@ -862,15 +863,18 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
       if (!args.contactId) throw new Error(tErr('needsContact', { step: 'assign_conversation' }))
       let agentId = cfg.agent_id
       if (cfg.mode === 'round_robin') {
-        // Pick any member of the account. The existing implementation
-        // only ever returned the automation's author; preserving that
-        // shape until a real round-robin algorithm replaces it.
-        const { data: profiles } = await db
-          .from('profiles')
-          .select('user_id')
-          .eq('account_id', args.automation.account_id)
-          .limit(1)
-        agentId = profiles?.[0]?.user_id
+        // Reparto entre los asesores (rol Agente): el que tenga menos
+        // chats abiertos. Sin asesores, cualquier miembro de la cuenta
+        // (el comportamiento anterior).
+        agentId = (await pickHandoffAgent(db, args.automation.account_id, null)) ?? undefined
+        if (!agentId) {
+          const { data: profiles } = await db
+            .from('profiles')
+            .select('user_id')
+            .eq('account_id', args.automation.account_id)
+            .limit(1)
+          agentId = profiles?.[0]?.user_id
+        }
       }
       if (!agentId) return 'no agent resolved'
       await db

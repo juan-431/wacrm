@@ -2,6 +2,7 @@ import type { Conversation, ConversationStatus } from "@/types";
 
 export const INBOX_FILTERS = [
   "all",
+  "mine",
   "unread",
   "waiting",
   "unassigned",
@@ -42,10 +43,17 @@ export function applyInboxFilter(
   conversations: Conversation[],
   filter: InboxFilter,
   now: number,
+  /** Usuario actual, para el filtro "Mis chats". */
+  currentUserId?: string | null,
 ): Conversation[] {
   switch (filter) {
     case "all":
       return conversations;
+    case "mine":
+      if (!currentUserId) return [];
+      return conversations.filter(
+        (c) => c.status !== "closed" && c.assigned_agent_id === currentUserId,
+      );
     case "unread":
       return conversations.filter((c) => c.unread_count > 0);
     case "waiting":

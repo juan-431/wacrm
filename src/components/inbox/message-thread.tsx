@@ -3,6 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { canActOnConversation, canChangeAssignment } from "@/lib/inbox/ownership";
 import { usePresence } from "@/hooks/use-presence";
 import { PresenceDot } from "@/components/presence/presence-dot";
 import { presenceLabel } from "@/lib/presence";
@@ -191,7 +192,7 @@ export function MessageThread({
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user } = useAuth();
+  const { user, accountRole } = useAuth();
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -942,15 +943,22 @@ export function MessageThread({
     async (agentId: string | null) => {
       if (!conversation) return;
 
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("conversations")
-        .update({ assigned_agent_id: agentId })
-        .eq("id", conversation.id)
-        .select("assigned_agent_id")
-        .single();
-
-      if (error) {
+      // Por la API: el servidor aplica las reglas de varios asesores
+      // (lib/inbox/ownership.ts).
+      let data: { assigned_agent_id?: string | null } | null = null;
+      try {
+        const res = await fetch(`/api/conversations/${conversation.id}/assign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agent_id: agentId }),
+        });
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          toast.error(payload?.error || t("assignmentUpdateFailed"));
+          return;
+        }
+        data = await res.json();
+      } catch (error) {
         console.error("Failed to update assignment:", error);
         toast.error(t("assignmentUpdateFailed"));
         return;
@@ -999,6 +1007,12 @@ export function MessageThread({
   const assignLabel = assignedAgentId
     ? (currentAssignee?.full_name ?? t("assigned"))
     : t("assign");
+  // Varios asesores: ¿puede este usuario atender el chat?
+  const canAct = canActOnConversation(assignedAgentId, user?.id, accountRole);
+  const lockedBy =
+    assignedAgentId && !canAct
+      ? (currentAssignee?.full_name ?? t("anotherAgent"))
+      : null;
 
   return (
     // `min-w-0` is load-bearing: the page already puts min-w-0 on the
@@ -1151,6 +1165,7 @@ export function MessageThread({
                   return (
                     <DropdownMenuItem
                       key={p.id}
+                      disabled={!canChangeAssignment(assignedAgentId, p.user_id, user?.id, accountRole)}
                       onClick={() => handleAssignChange(p.user_id)}
                       className={cn(
                         "text-sm",
@@ -1179,6 +1194,7 @@ export function MessageThread({
                 <>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
+                    disabled={!canChangeAssignment(assignedAgentId, null, user?.id, accountRole)}
                     onClick={() => handleAssignChange(null)}
                     className="text-sm text-muted-foreground"
                   >
@@ -1288,6 +1304,7 @@ export function MessageThread({
         handoffSummary={conversation.ai_handoff_summary}
         assignedAgentId={assignedAgentId}
         currentUserId={user?.id}
+        canAct={canAct}
         onChange={(patch) => {
           if ("assigned_agent_id" in patch) {
             onAssignChange(conversation.id, patch.assigned_agent_id ?? null);
@@ -1299,6 +1316,7 @@ export function MessageThread({
       <MessageComposer
         conversationId={conversation.id}
         sessionExpired={sessionInfo.expired}
+        lockedBy={lockedBy}
         onSend={handleSend}
         onSendMedia={handleSendMedia}
         onSendInteractive={handleSendInteractive}

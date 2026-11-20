@@ -112,6 +112,8 @@ interface MediaDraft {
 interface MessageComposerProps {
   conversationId: string;
   sessionExpired: boolean;
+  /** Nombre del asesor dueño del chat cuando no es el usuario actual. */
+  lockedBy?: string | null;
   onSend: (text: string, replyToId?: string) => void;
   onSendMedia: (payload: SendMediaPayload) => void;
   onSendInteractive: (payload: InteractiveMessagePayload, replyToId?: string) => void;
@@ -134,6 +136,7 @@ const OPUS_ENCODER_PATH = "/opus/encoderWorker.min.js";
 export function MessageComposer({
   conversationId,
   sessionExpired,
+  lockedBy = null,
   onSend,
   onSendMedia,
   onSendInteractive,
@@ -203,7 +206,7 @@ export function MessageComposer({
   // For solo users this is always true — single-owner accounts pass
   // every capability — so the disabled branch is a no-op there.
   const canSend = useCan("send-messages");
-  const readOnly = !canSend;
+  const readOnly = !canSend || !!lockedBy;
   // Media (like free-form text) is only allowed inside the 24h window.
   const inputsDisabled = readOnly || sessionExpired;
 
@@ -563,7 +566,14 @@ export function MessageComposer({
           />
         </div>
       )}
-      {sessionExpired && (
+      {lockedBy && (
+        <div className="mb-2 rounded-lg bg-muted px-3 py-2">
+          <p className="text-xs text-muted-foreground">
+            {t("lockedByOther", { name: lockedBy })}
+          </p>
+        </div>
+      )}
+      {sessionExpired && !lockedBy && (
         <div className="mb-2 flex items-center justify-between rounded-lg bg-amber-500/10 px-3 py-2">
           <p className="text-xs text-amber-400">
             {t("sessionExpiredHint")}
